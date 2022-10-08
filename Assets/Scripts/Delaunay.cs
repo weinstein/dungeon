@@ -257,53 +257,51 @@ public class Delaunay
         triGraph.Remove(e.b);
     }
 
-    public void AddPoint(Vector2 p)
-    {
-        Triangle parent = null;
-        triGraph.TraverseDepthFirst(t =>
-        {
-            if (t.Contains(p)) parent = t;
-        }, (_, _, _) => { });
-        Triangle abp, acp, bcp;
-        abp = new Triangle(parent.a, parent.b, p);
-        acp = new Triangle(parent.a, parent.c, p);
-        bcp = new Triangle(parent.b, parent.c, p);
-        foreach (KeyValuePair<Triangle, EdgeData> kv in triGraph.FindEdges(parent))
-        {
-            if (abp.ContainsEdge(kv.Value.src, kv.Value.dst)) triGraph.AddUndirected(kv.Key, abp, kv.Value);
-            if (acp.ContainsEdge(kv.Value.src, kv.Value.dst)) triGraph.AddUndirected(kv.Key, acp, kv.Value);
-            if (bcp.ContainsEdge(kv.Value.src, kv.Value.dst)) triGraph.AddUndirected(kv.Key, bcp, kv.Value);
+    void AddPoint(Vector2 p) {
+        HashSet<Triangle> invalidated = new();
+        List<Triangle> newTriangles = new();
+        triGraph.ForEachNode(t => {
+            if (t.circ.Contains(p)) invalidated.Add(t);
+        });
+        foreach (Triangle t in invalidated) {
+            // Check outer edges of the placeholder boundary triangle
+            for (int i = 0; i < 3; ++i) {
+                Vector2 src = t[i];
+                Vector2 dst = t[(i+1)%3];
+                if(placeholderPoints.Contains(src) && placeholderPoints.Contains(dst)) {
+                    newTriangles.Add(new(src, dst, p));
+                }
+            }
+            // Check internal triangles
+            foreach (KeyValuePair<Triangle, EdgeData> kv in triGraph.FindEdges(t)) {
+                if (!invalidated.Contains(kv.Key)) {
+                    Triangle newTriangle = new(kv.Value.src, kv.Value.dst, p);
+                    newTriangles.Add(newTriangle);
+                    triGraph.AddUndirected(kv.Key, newTriangle, kv.Value);
+                }
+            }
         }
-        EdgeData newEdge = new();
-        newEdge.src = p;
-        newEdge.dst = parent.a;
-        triGraph.AddUndirected(abp, acp, newEdge);
-        DelaunayEdge toCheck = new();
-        toCheck.a = abp;
-        toCheck.b = acp;
-        toCheck.src = newEdge.src;
-        toCheck.dst = newEdge.dst;
-        edgesToCheck.Enqueue(toCheck);
-
-        newEdge.dst = parent.b;
-        triGraph.AddUndirected(abp, bcp, newEdge);
-        toCheck.a = abp;
-        toCheck.b = bcp;
-        toCheck.dst = newEdge.dst;
-
-        newEdge.dst = parent.c;
-        triGraph.AddUndirected(bcp, acp, newEdge);
-        toCheck.a = bcp;
-        toCheck.b = acp;
-        toCheck.dst = newEdge.dst;
-        edgesToCheck.Enqueue(toCheck);
-        
-        triGraph.Remove(parent);
+        foreach (Triangle t in invalidated) triGraph.Remove(t);
+        // new triangles are already connected to their perimeters
+        // need to connect the new triangles to each other and enqueue their new shared edges
+        foreach (Triangle t1 in newTriangles) {
+            foreach (Triangle t2 in newTriangles) {
+                if (t1 == t2) continue;
+                for (int i = 0; i < 3; ++i) {
+                    Vector2 src = t1[i];
+                    Vector2 dst = t1[(i+1)%3];
+                    if (t2.ContainsEdge(src, dst)) {
+                        triGraph.AddUndirected(t1, t2, new(){src=src, dst=dst});
+                        edgesToCheck.Enqueue(new(){a=t1, b=t2, src=src, dst=dst});
+                    }
+                }
+            }
+        }
     }
 
-    public static Graph<Vector2, float> Triangulate(IEnumerable<Vector2> points)
+    public static DistanceGraph<Vector2> Triangulate(IEnumerable<Vector2> points)
     {
-        Graph<Vector2, float> ret = new();
+        DistanceGraph<Vector2> ret = new();
         Delaunay d = new(points);
         d.triGraph.ForEachNode(n =>
         {
@@ -316,5 +314,10 @@ public class Delaunay
             }
         });
         return ret;
+    }
+
+    public static DistanceGraph<Vector2> Triangulate(params Vector2[] values) {
+        IEnumerable<Vector2> points = values;
+        return Triangulate(points);
     }
 }

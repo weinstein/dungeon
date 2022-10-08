@@ -10,12 +10,15 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     public TileBase floorTile;
     public TileBase wallTile;
     public TileBase emptyTile;
+    public TileBase startTile;
+    public TileBase endTile;
 
     public int minRoomSize = 3;
     public int maxRoomSize = 3;
     public int padding = 1;
     public int wallHeight = 1;
     public int numRooms = 3;
+    public float edgeDensity = 0.1f;
 
     public class Room
     {
@@ -43,7 +46,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         }
     }
     List<Room> rooms = new();
-    Graph<Room, float> roomGraph = new();
+    DistanceGraph<Room> roomGraph = new();
 
     public override void Clear(TileBase fillWith)
     {
@@ -249,18 +252,45 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         roomGraph.TraverseDepthFirst(r => { }, (src, dst, len) => {
             RenderCorridorBetween(src.UnpadFloorBounds(padding, wallHeight), dst.UnpadFloorBounds(padding, wallHeight));
         });
+        Room startingRoom = criticalPath[0];
+        tilemap.SetTile(Center(startingRoom.UnpadFloorBounds(padding, wallHeight)), startTile);
+        Room endingRoom = criticalPath[criticalPath.Count - 1];
+        tilemap.SetTile(Center(endingRoom.UnpadFloorBounds(padding, wallHeight)), endTile);
     }
 
-    private Graph<Vector2, float> triangulation = new();
+    private DistanceGraph<Vector2> triangulation = new();
+    private List<Room> criticalPath = new();
+
+    void DebugDrawLine(Vector2 gridPt1, Vector2 gridPt2, Color c) {
+        Vector3 worldPos1 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt1.x * tilemap.cellSize.x, gridPt1.y * tilemap.cellSize.y);
+        Vector3 worldPos2 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt2.x * tilemap.cellSize.x, gridPt2.y * tilemap.cellSize.y);
+        Debug.DrawLine(worldPos1, worldPos2, c);
+    }
+
+    void DebugDrawArrow(Vector2 gridPt1, Vector2 gridPt2, Color c, float size) {
+        Vector3 worldPos1 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt1.x * tilemap.cellSize.x, gridPt1.y * tilemap.cellSize.y);
+        Vector3 worldPos2 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt2.x * tilemap.cellSize.x, gridPt2.y * tilemap.cellSize.y);
+        
+        size *= (worldPos1 - worldPos2).magnitude;
+        Debug.DrawLine(worldPos1, worldPos2, c);
+        Debug.DrawLine(worldPos2 + size * new Vector3(-1, -1), worldPos2 + size * new Vector3(1, 1), c);
+        Debug.DrawLine(worldPos2 + size * new Vector3(-1, 1), worldPos2 + size * new Vector3(1, -1), c);
+    }
 
     public void Update()
     {
         triangulation.ForEachEdge((p1, p2, d) =>
         {
-            Vector3 worldPos1 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(p1.x * tilemap.cellSize.x, p1.y * tilemap.cellSize.y);
-            Vector3 worldPos2 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(p2.x * tilemap.cellSize.x, p2.y * tilemap.cellSize.y);
-            Debug.DrawLine(worldPos1, worldPos2, Color.red);
+            DebugDrawArrow(p1, p2, Color.red, 0.1f);
         });
+        roomGraph.ForEachEdge((r1, r2, d) => {
+            DebugDrawArrow(r1.bounds.center, r2.bounds.center, Color.green, 0.1f);
+        });
+        for (int i = 1; i < criticalPath.Count; ++i) {
+            Room r1 = criticalPath[i-1];
+            Room r2 = criticalPath[i];
+            DebugDrawArrow(r1.bounds.center, r2.bounds.center, Color.blue, 0.1f);
+        }
     }
 
     public override void Generate()
@@ -278,12 +308,23 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         rooms.ForEach(r => roomByCenter.Add(r.bounds.center, r));
         triangulation = Delaunay.Triangulate(roomByCenter.Keys);
         Debug.Log(triangulation);
-        //triangulation.ForEachEdge((p1, p2, dist) =>
-        //{
-            //roomGraph.AddDirected(roomByCenter[p1], roomByCenter[p2], dist);
-        //});
-        //Debug.Log(roomGraph);
-        //roomGraph = fullGraph.MinimalSpanningTree(Comparer<float>.Default);
+        DistanceGraph<Room> roomTriangulation = new();
+        triangulation.ForEachEdge((p1, p2, dist) =>
+        {
+            Room r1 = roomByCenter[p1];
+            Room r2 = roomByCenter[p2];
+            roomTriangulation.AddUndirected(r1, r2, dist);
+        });
+        roomGraph = roomTriangulation.MinimalSpanningTree();
+        criticalPath = roomGraph.LongestPath();
+        roomTriangulation.ForEachEdge((r1, r2, d) => {
+            bool hasEdge = roomGraph.ContainsEdge(r1, r2) || roomGraph.ContainsEdge(r2, r1);
+            bool include = Random.Range(0f, 1f) <= edgeDensity;
+            if (!hasEdge && include) {
+                roomGraph.AddDirected(r1, r2, d);
+            }
+        });
+        Debug.Log(roomGraph);
         RenderToTilemap();
     }
 }
