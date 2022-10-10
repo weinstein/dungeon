@@ -346,7 +346,7 @@ public class DistanceGraph<NodeT> : Graph<NodeT, float> /*where NodeT : ICompara
         ForEachNode(n1 => {
             ForEachNode(n2 => {
                 if (n1.Equals(n2)) return;
-                List<NodeT> path = LongestPath(n1, n2);
+                List<NodeT> path = ShortestPath(n1, n2);
                 if (path == null) return;
                 float pathLen = TotalDistance(path);
                 if (pathLen > longest) {

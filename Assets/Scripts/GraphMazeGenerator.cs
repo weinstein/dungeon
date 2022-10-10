@@ -207,7 +207,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             int x = Random.Range(xMin + 1, xMax - 1);
             for (int y = Math.Min(b1.yMax, b2.yMax) - 1; y <= Math.Max(b1.yMin, b2.yMin); ++y)
             {
-                tilemap.SetTile(new Vector3Int(x, y, 0), floorTile);
+                RenderTile(new Vector3Int(x, y), floorTile);
             }
         } else if (yOverlaps)
         {
@@ -216,7 +216,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             int y = Random.Range(yMin + 1, yMax - 1);
             for (int x = Math.Min(b1.xMax, b2.xMax) - 1; x <= Math.Max(b1.xMin, b2.xMin); ++x)
             {
-                tilemap.SetTile(new Vector3Int(x, y, 0), floorTile);
+                RenderTile(new Vector3Int(x, y), floorTile);
             }
         } else
         {
@@ -227,13 +227,24 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             Vector3Int cur = c1;
             for (; cur.x != c2.x; cur.x += dirX)
             {
-                tilemap.SetTile(cur, floorTile);
+                RenderTile(cur, floorTile);
             }
             for (; cur.y != c2.y; cur.y += dirY)
             {
-                tilemap.SetTile(cur, floorTile);
+                RenderTile(cur, floorTile);
             }
         }
+    }
+
+    void RenderTile(int x, int y, TileBase t)
+    {
+        RenderTile(new Vector3Int(x, y), t);
+    }
+
+    void RenderTile(Vector3Int pos, TileBase t)
+    {
+        tilemap.SetTile(pos, null);
+        tilemap.SetTile(pos, t);
     }
 
     void RenderRoom(Room r)
@@ -242,7 +253,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         foreach (Vector3Int pos in r.UnpadBounds(padding).allPositionsWithin)
         {
             bool isFloor = floor.Contains(pos);
-            tilemap.SetTile(pos, isFloor ? floorTile : wallTile);
+            RenderTile(pos, isFloor ? floorTile : wallTile);
         }
     }
 
@@ -253,9 +264,10 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             RenderCorridorBetween(src.UnpadFloorBounds(padding, wallHeight), dst.UnpadFloorBounds(padding, wallHeight));
         });
         Room startingRoom = criticalPath[0];
-        tilemap.SetTile(Center(startingRoom.UnpadFloorBounds(padding, wallHeight)), startTile);
+        RenderTile(Center(startingRoom.UnpadFloorBounds(padding, wallHeight)), startTile);
         Room endingRoom = criticalPath[criticalPath.Count - 1];
-        tilemap.SetTile(Center(endingRoom.UnpadFloorBounds(padding, wallHeight)), endTile);
+        RenderTile(Center(endingRoom.UnpadFloorBounds(padding, wallHeight)), endTile);
+        tilemap.RefreshAllTiles();
     }
 
     private DistanceGraph<Vector2> triangulation = new();
@@ -281,15 +293,15 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     {
         triangulation.ForEachEdge((p1, p2, d) =>
         {
-            DebugDrawArrow(p1, p2, Color.red, 0.1f);
+            DebugDrawLine(p1, p2, Color.gray);
         });
         roomGraph.ForEachEdge((r1, r2, d) => {
-            DebugDrawArrow(r1.bounds.center, r2.bounds.center, Color.green, 0.1f);
+            DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.green);
         });
         for (int i = 1; i < criticalPath.Count; ++i) {
             Room r1 = criticalPath[i-1];
             Room r2 = criticalPath[i];
-            DebugDrawArrow(r1.bounds.center, r2.bounds.center, Color.blue, 0.1f);
+            DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.blue);
         }
     }
 
@@ -309,14 +321,14 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         triangulation = Delaunay.Triangulate(roomByCenter.Keys);
         Debug.Log(triangulation);
         DistanceGraph<Room> roomTriangulation = new();
-        triangulation.ForEachEdge((p1, p2, dist) =>
+        triangulation.ForEachEdge((p1, p2, _) =>
         {
             Room r1 = roomByCenter[p1];
             Room r2 = roomByCenter[p2];
+            float dist = Mathf.Abs(p2.x - p1.x) + Mathf.Abs(p2.y - p1.y);
             roomTriangulation.AddUndirected(r1, r2, dist);
         });
         roomGraph = roomTriangulation.MinimalSpanningTree();
-        criticalPath = roomGraph.LongestPath();
         roomTriangulation.ForEachEdge((r1, r2, d) => {
             bool hasEdge = roomGraph.ContainsEdge(r1, r2) || roomGraph.ContainsEdge(r2, r1);
             bool include = Random.Range(0f, 1f) <= edgeDensity;
@@ -325,6 +337,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             }
         });
         Debug.Log(roomGraph);
+        criticalPath = roomGraph.Undirected().LongestPath();
         RenderToTilemap();
     }
 }

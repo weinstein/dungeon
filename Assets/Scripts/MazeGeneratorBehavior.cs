@@ -17,6 +17,7 @@ public abstract class MazeGeneratorBehavior : MonoBehaviour
         tilemap.CompressBounds();
         foreach (Vector3Int pos in tilemap.cellBounds.allPositionsWithin)
         {
+            tilemap.SetTile(pos, null);
             tilemap.SetTile(pos, fillWith);
         }
     }
