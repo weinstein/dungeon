@@ -19,6 +19,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     public int wallHeight = 1;
     public int numRooms = 3;
     public float edgeDensity = 0.1f;
+    public int corridorStraightness = 4;
 
     public class Room
     {
@@ -194,46 +195,119 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         ret.z = (b.zMin + b.zMax - 1) / 2;
         return ret;
     }
-
-
-    void RenderCorridorBetween(BoundsInt b1, BoundsInt b2)
+    static int ManhattanDistance(Vector3Int p, BoundsInt b)
     {
-        bool xOverlaps = b2.xMin + 1 < b1.xMax - 1 && b2.xMax - 1 > b1.xMin + 1;
-        bool yOverlaps = b2.yMin + 1 < b1.yMax - 1 && b2.yMax - 1 > b1.yMin + 1;
-        if (xOverlaps)
+        int xDist = 0;
+        if (p.x >= b.xMax) xDist = p.x - b.xMax + 1;
+        else if (p.x < b.xMin) xDist = b.xMin - p.x;
+        int yDist = 0;
+        if (p.y >= b.yMax) yDist = p.y - b.yMax + 1;
+        else if (p.y < b.yMin) yDist = b.yMin - p.y;
+        int zDist = 0;
+        if (p.z >= b.zMax) zDist = p.z - b.zMax + 1;
+        else if (p.z < b.zMin) zDist = b.zMin - p.z;
+        return xDist + yDist + zDist;
+    }
+
+    static int LInfDistance(Vector3Int p, BoundsInt b)
+    {
+        int xDist = 0;
+        if (p.x >= b.xMax) xDist = p.x - b.xMax + 1;
+        else if (p.x < b.xMin) xDist = b.xMin - p.x;
+        int yDist = 0;
+        if (p.y >= b.yMax) yDist = p.y - b.yMax + 1;
+        else if (p.y < b.yMin) yDist = b.yMin - p.y;
+        int zDist = 0;
+        if (p.z >= b.zMax) zDist = p.z - b.zMax + 1;
+        else if (p.z < b.zMin) zDist = b.zMin - p.z;
+        return Math.Max(xDist, Math.Max(yDist, zDist));
+    }
+
+    static bool CameFromDirIsStraight(Vector3Int p, Dictionary<Vector3Int, Vector3Int> cameFrom)
+    {
+        if (!cameFrom.ContainsKey(p)) return true;
+        Vector3Int p1 = cameFrom[p];
+        if (!cameFrom.ContainsKey(p1)) return true;
+        Vector3Int p2 = cameFrom[p1];
+        return (p - p1) == (p1 - p2);
+    }
+
+    List<Vector3Int> CorridorSearch(BoundsInt src, BoundsInt dst)
+    {
+        List<Vector3Int> candidates = new();
+        Dictionary<Vector3Int, int> gScore = new();
+        Dictionary<Vector3Int, int> fScore = new();
+        Dictionary<Vector3Int, Vector3Int> cameFrom = new();
+        foreach (Vector3Int pos in src.allPositionsWithin)
         {
-            int xMin = Math.Max(b1.xMin, b2.xMin);
-            int xMax = Math.Min(b1.xMax, b2.xMax);
-            int x = Random.Range(xMin + 1, xMax - 1);
-            for (int y = Math.Min(b1.yMax, b2.yMax) - 1; y <= Math.Max(b1.yMin, b2.yMin); ++y)
-            {
-                RenderTile(new Vector3Int(x, y), floorTile);
-            }
-        } else if (yOverlaps)
+            candidates.Add(pos);
+            gScore[pos] = 0;
+            fScore[pos] = LInfDistance(pos, dst);
+        }
+        while (candidates.Count > 0)
         {
-            int yMin = Math.Max(b1.yMin, b2.yMin);
-            int yMax = Math.Min(b1.yMax, b2.yMax);
-            int y = Random.Range(yMin + 1, yMax - 1);
-            for (int x = Math.Min(b1.xMax, b2.xMax) - 1; x <= Math.Max(b1.xMin, b2.xMin); ++x)
+            candidates.Sort((x, y) => {
+                int yF = fScore.GetValueOrDefault(y, 9999)/corridorStraightness;
+                int xF = fScore.GetValueOrDefault(x, 9999)/corridorStraightness;
+                if (xF != yF) return yF - xF;
+                bool xStraight = CameFromDirIsStraight(x, cameFrom);
+                bool yStraight = CameFromDirIsStraight(y, cameFrom);
+                if (yStraight && !xStraight) return -1;
+                if (xStraight && !yStraight) return 1;
+                return 0;
+            });
+            Vector3Int cur = candidates[candidates.Count - 1];
+            candidates.RemoveAt(candidates.Count - 1);
+            if (dst.Contains(cur))
             {
-                RenderTile(new Vector3Int(x, y), floorTile);
+                List<Vector3Int> ret = new() { cur };
+                while (!src.Contains(cur))
+                {
+                    cur = cameFrom[cur];
+                    ret.Insert(0, cur);
+                }
+                return ret;
             }
-        } else
-        {
-            Vector3Int c1 = Center(b1);
-            Vector3Int c2 = Center(b2);
-            int dirX = c2.x - c1.x >= 0 ? 1 : -1;
-            int dirY = c2.y - c1.y >= 0 ? 1 : -1;
-            Vector3Int cur = c1;
-            for (; cur.x != c2.x; cur.x += dirX)
+            foreach (Vector3Int dir in allDirs)
             {
-                RenderTile(cur, floorTile);
-            }
-            for (; cur.y != c2.y; cur.y += dirY)
-            {
-                RenderTile(cur, floorTile);
+                Vector3Int neighbor = cur + dir;
+                
+                if (!tilemap.cellBounds.Contains(neighbor)) continue;
+                bool nearExistingFloor = false;
+                if (!src.Contains(neighbor) && !dst.Contains(neighbor) && tilemap.GetTile(neighbor) == floorTile) nearExistingFloor = true;
+                foreach (Vector3Int dir2 in allDirs)
+                {
+                    Vector3Int x = neighbor + dir2;
+                    if (!src.Contains(x) && !dst.Contains(x) && tilemap.GetTile(x) == floorTile) nearExistingFloor = true;
+                }
+                if (nearExistingFloor) continue;
+
+                int tentativeScore = gScore[cur] + 1;
+                if (tentativeScore/corridorStraightness < gScore.GetValueOrDefault(neighbor, 9999)/corridorStraightness)
+                {
+                    cameFrom[neighbor] = cur;
+                    gScore[neighbor] = tentativeScore;
+                    fScore[neighbor] = tentativeScore + ManhattanDistance(neighbor, dst);
+                    candidates.Add(neighbor);
+                }
             }
         }
+        return null;
+    }
+
+    static Vector3Int[] allDirs = new Vector3Int[] { Vector3Int.left, Vector3Int.down, Vector3Int.right, Vector3Int.up };
+
+    bool RenderCorridorBetween(BoundsInt b1, BoundsInt b2)
+    {
+        List<Vector3Int> path = CorridorSearch(b1, b2);
+        if (path == null) return false;
+        path.ForEach(p => RenderTile(p, floorTile));
+        return true;
+    }
+
+    bool RenderCorridorBetween(Room r1, Room r2)
+    {
+        return RenderCorridorBetween(r1.UnpadFloorBounds(padding, wallHeight), r2.UnpadFloorBounds(padding, wallHeight));
     }
 
     void RenderTile(int x, int y, TileBase t)
@@ -260,9 +334,26 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     void RenderToTilemap()
     {
         foreach (Room r in rooms) RenderRoom(r);
+        List<ValueTuple<Room, Room>> unpathable = new();
+        for (int i = 1; i < criticalPath.Count; ++i)
+        {
+            Room r1 = criticalPath[i - 1];
+            Room r2 = criticalPath[i];
+            if (!RenderCorridorBetween(r1, r2)) unpathable.Add((r1, r2));
+        }        
         roomGraph.TraverseDepthFirst(r => { }, (src, dst, len) => {
-            RenderCorridorBetween(src.UnpadFloorBounds(padding, wallHeight), dst.UnpadFloorBounds(padding, wallHeight));
+            if (criticalPath.Contains(src) && criticalPath.Contains(dst)) return;
+            if (!RenderCorridorBetween(src, dst))
+            {
+                unpathable.Add((src, dst));
+            }
         });
+        foreach (ValueTuple<Room, Room> e in unpathable)
+        {
+            Debug.LogError("unpathable rooms: " + e.Item1.bounds + " => " + e.Item2.bounds);
+            roomGraph.RemoveUndirected(e.Item1, e.Item2);
+        }
+
         Room startingRoom = criticalPath[0];
         RenderTile(Center(startingRoom.UnpadFloorBounds(padding, wallHeight)), startTile);
         Room endingRoom = criticalPath[criticalPath.Count - 1];
@@ -298,10 +389,17 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         roomGraph.ForEachEdge((r1, r2, d) => {
             DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.green);
         });
-        for (int i = 1; i < criticalPath.Count; ++i) {
-            Room r1 = criticalPath[i-1];
+        for (int i = 1; i < criticalPath.Count; ++i)
+        {
+            Room r1 = criticalPath[i - 1];
             Room r2 = criticalPath[i];
-            DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.blue);
+            if (roomGraph.ContainsEdge(r1, r2) || roomGraph.ContainsEdge(r2, r1))
+            {
+                DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.blue);
+            } else
+            {
+                DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.red);
+            }
         }
     }
 
