@@ -13,6 +13,7 @@ public class ItemPickupBehavior : MonoBehaviour
         if (isEnabled && collision.gameObject.CompareTag("Player"))
         {
             Debug.Log("player got " + name + " x" + count);
+            InventoryData.instance.Add(name, count);
             isEnabled = false;
             Destroy(gameObject);
         }
