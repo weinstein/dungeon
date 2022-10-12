@@ -43,25 +43,6 @@ public class PlayerControlBehavior : MonoBehaviour
         return (Target() - transform.position).sqrMagnitude > tolerance;
     }
 
-    bool RayCast(Vector3Int src, Vector3Int dst)
-    {
-        Vector3 origin = grid.CellToWorld(src) + 0.5f * grid.cellSize;
-        Vector3 dir = (grid.CellToWorld(dst) + 0.5f * grid.cellSize ) - origin;
-        Debug.DrawRay(origin, dir, Color.red, 1.0f);
-        List<RaycastHit2D> results = new();
-        ContactFilter2D filter = new();
-        filter.NoFilter();
-        int hits = Physics2D.Raycast(origin, dir.normalized, filter, results, dir.magnitude);
-        foreach (RaycastHit2D result in results)
-        {
-            if (!result.collider.CompareTag("Player") && result.fraction > 0)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void OnCollisionEnter2D(Collision2D collision)
     {
         targetCell = prevCell;
@@ -94,7 +75,6 @@ public class PlayerControlBehavior : MonoBehaviour
         targetCell = next;
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (!IsMoving())

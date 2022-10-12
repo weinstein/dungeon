@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Random = UnityEngine.Random;
@@ -55,20 +56,17 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         {
             return bounds.ToString();
         }
-
-        public List<GameObject> clutter = new();
     }
     List<Room> rooms = new();
     DistanceGraph<Room> roomGraph = new();
 
     public override void Clear(TileBase fillWith)
     {
-        foreach (Room r in rooms)
+        while (transform.childCount > 0)
         {
-            foreach (GameObject o in r.clutter)
-            {
-                DestroyImmediate(o);
-            }
+            GameObject o = transform.GetChild(0).gameObject;
+            Debug.Log("destroy child " + o.name);
+            DestroyImmediate(o);
         }
         rooms.Clear();
         roomGraph.Clear();
@@ -123,18 +121,6 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         ret.x -= (-x0 <= x1) ? x0 : x1;
         ret.y -= (-y0 <= y1) ? y0 : y1;
         return ret;
-        /*
-        int dx = Math.Max(-x0, x1);
-        int dy = Math.Max(-y0, y1);
-        if (dx <= dy)
-        {
-            return Vector2Int.left * ((-x0 <= x1) ? x0 : x1);
-        }
-        else
-        {
-            return Vector2Int.down * ((-y0 <= y1) ? y0 : y1);
-        }
-        */
     }
 
      Vector2Int JiggleRooms(Room anchor, Room other)
@@ -172,6 +158,17 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     static void RandomShuffle<T>(T[] elems)
     {
         for (int i = elems.Length - 1; i >= 1; --i)
+        {
+            int j = Random.Range(0, i);
+            T tmp = elems[i];
+            elems[i] = elems[j];
+            elems[j] = tmp;
+        }
+    }
+
+    static void RandomShuffle<T>(List<T> elems)
+    {
+        for (int i = elems.Count - 1; i >= 1; --i)
         {
             int j = Random.Range(0, i);
             T tmp = elems[i];
@@ -251,8 +248,11 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         return (p - p1) == (p1 - p2);
     }
 
-    List<Vector3Int> CorridorSearch(BoundsInt src, BoundsInt dst)
+    List<Vector3Int> CorridorSearch(Room srcRoom, Room dstRoom)
     {
+        BoundsInt src = srcRoom.UnpadBounds(padding);
+        BoundsInt dst = dstRoom.UnpadBounds(padding);
+
         List<Vector3Int> candidates = new();
         Dictionary<Vector3Int, int> gScore = new();
         Dictionary<Vector3Int, int> fScore = new();
@@ -292,14 +292,24 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
                 Vector3Int neighbor = cur + dir;
                 
                 if (!tilemap.cellBounds.Contains(neighbor)) continue;
-                bool nearExistingFloor = false;
-                if (!src.Contains(neighbor) && !dst.Contains(neighbor) && tilemap.GetTile(neighbor) == floorTile) nearExistingFloor = true;
-                foreach (Vector3Int dir2 in allDirs)
+                bool disallowed = false;
+                for (int dx = -1; dx <= 1; ++dx)
                 {
-                    Vector3Int x = neighbor + dir2;
-                    if (!src.Contains(x) && !dst.Contains(x) && tilemap.GetTile(x) == floorTile) nearExistingFloor = true;
+                    for (int dy = -1; dy <= 1; ++dy)
+                    {
+                        Vector3Int x = neighbor;
+                        x.x += dx;
+                        x.y += dy;
+                        bool diagonal = dx != 0 && dy != 0;
+                        bool isEmpty = tilemap.GetTile(x) == emptyTile;
+                        bool isSrcWall = tilemap.GetTile(x) == wallTile && src.Contains(x);
+                        bool isDstWall = tilemap.GetTile(x) == wallTile && dst.Contains(x);
+                        disallowed |= (isSrcWall && !diagonal && dir != Vector3Int.up)
+                            || (isDstWall && !diagonal && dir != Vector3Int.down)
+                            || (!src.Contains(x) && !dst.Contains(x) && !isEmpty);
+                    }
                 }
-                if (nearExistingFloor) continue;
+                if (disallowed) continue;
 
                 int tentativeScore = gScore[cur] + 1;
                 if (tentativeScore/corridorStraightness < gScore.GetValueOrDefault(neighbor, 9999)/corridorStraightness)
@@ -316,17 +326,12 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     static Vector3Int[] allDirs = new Vector3Int[] { Vector3Int.left, Vector3Int.down, Vector3Int.right, Vector3Int.up };
 
-    bool RenderCorridorBetween(BoundsInt b1, BoundsInt b2)
+    bool RenderCorridorBetween(Room r1, Room r2)
     {
-        List<Vector3Int> path = CorridorSearch(b1, b2);
+        List<Vector3Int> path = CorridorSearch(r1, r2);
         if (path == null) return false;
         path.ForEach(p => RenderTile(p, floorTile));
         return true;
-    }
-
-    bool RenderCorridorBetween(Room r1, Room r2)
-    {
-        return RenderCorridorBetween(r1.UnpadFloorBounds(padding, wallHeight), r2.UnpadFloorBounds(padding, wallHeight));
     }
 
     void RenderTile(int x, int y, TileBase t)
@@ -392,10 +397,10 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     void DebugDrawArrow(Vector2 gridPt1, Vector2 gridPt2, Color c) {
         Vector3 worldPos1 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt1.x * tilemap.cellSize.x, gridPt1.y * tilemap.cellSize.y);
         Vector3 worldPos2 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt2.x * tilemap.cellSize.x, gridPt2.y * tilemap.cellSize.y);
-        Debug.DrawRay(worldPos1, worldPos2, c);
+        Debug.DrawRay(worldPos1, worldPos2 - worldPos1, c);
     }
 
-    public void Update()
+    public void OnDrawGizmos()
     {
         triangulation.ForEachEdge((p1, p2, d) =>
         {
@@ -413,39 +418,6 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         }
     }
 
-    void PlaceItemRandomly(Room r, GameObject prefab)
-    {
-        BoundsInt b = r.UnpadFloorBounds(padding, wallHeight);
-        int x, y;
-        bool validPos = false;
-        int attempts = b.size.x * b.size.y * 2;
-        do
-        {
-            x = Random.Range(b.xMin, b.xMax);
-            y = Random.Range(b.yMin, b.yMax);
-            validPos = IsPositionEmpty(x, y);
-        } while (!validPos && attempts-- > 0);
-        if (!validPos)
-        {
-            Debug.LogError("room is too full to find an available spot for item " + prefab.name);
-            return;
-        }
-        Vector3 worldPos = tilemap.CellToWorld(new(x, y)) + 0.5f * tilemap.cellSize;
-        var item = GameObject.Instantiate(prefab);
-        item.transform.parent = transform;
-        item.transform.transform.position = worldPos;
-        item.SetActive(true);
-        r.clutter.Add(item);
-    }
-
-    bool IsPositionEmpty(int x, int y)
-    {
-        Vector2 worldPos = tilemap.CellToWorld(new(x, y)) + 0.5f * tilemap.cellSize;
-        var collider = Physics2D.OverlapBox(worldPos, 0.5f * tilemap.cellSize, 0f);
-        if (collider != null) Debug.Log("item at " + x + "," + y + ": " + collider.gameObject.name);
-        return collider == null;
-    }
-
     GameObject RandomClutter()
     {
         int totalWeight = 0;
@@ -461,12 +433,36 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     void PopulateWithClutter(Room r)
     {
+        List<Vector3Int> options = new();
+        foreach (Vector3Int pos in r.UnpadFloorBounds(padding, wallHeight).allPositionsWithin)
+        {
+            options.Add(pos);
+        }
+        RandomShuffle(options);
         int n = Random.Range(numClutterMin, numClutterMax + 1);
-        for (int i = 0; i < n; ++i)
+        for (int i = 0; i < n && i < options.Count; ++i)
         {
             GameObject o = RandomClutter();
-            PlaceItemRandomly(r, o);
+            Vector3Int pos = options[i];
+            Vector3 worldPos = tilemap.CellToWorld(pos) + 0.5f * tilemap.cellSize;
+            var item = (GameObject)PrefabUtility.InstantiatePrefab(o);
+            item.transform.parent = transform;
+            item.transform.transform.position = worldPos;
+            item.SetActive(true);
         }
+    }
+
+    void PruneUnreachableRooms(Room start)
+    {
+        HashSet<Room> unreachable = new();
+        rooms.ForEach(r => unreachable.Add(r));
+        roomGraph.TraverseBreadthFirst(start, r => unreachable.Remove(r), (_, _, _) => { });
+        foreach (Room r in unreachable)
+        {
+            rooms.Remove(r);
+            roomGraph.Remove(r);
+        }
+        if (unreachable.Count > 0) Debug.LogWarning("pruned " + unreachable.Count + " unreachable rooms");
     }
 
     public override void Generate()
@@ -502,6 +498,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         });
         Debug.Log(roomGraph);
         criticalPath = roomGraph.Undirected().LongestPath();
+        PruneUnreachableRooms(criticalPath[0]);
         rooms.ForEach(PopulateWithClutter);
         RenderToTilemap();
     }

@@ -160,21 +160,27 @@ public class Graph<NodeT, EdgeT> //where EdgeT : IComparable<EdgeT>
         return undirected;
     }
 
-    static T FirstOrDefault<T>(IEnumerable<T> elems, T fallback)
+    static T FirstOrException<T>(IEnumerable<T> elems)
     {
         foreach (T elem in elems)
         {
             return elem;
         }
-        return fallback;
+        throw new IndexOutOfRangeException();
     }
 
     public void TraverseDepthFirst(Action<NodeT> onNode, Action<NodeT, NodeT, EdgeT> onEdge)
     {
+        if (nodes.Count == 0) return;
+        NodeT seed = FirstOrException(nodes.Keys);
+        TraverseDepthFirst(seed, onNode, onEdge);
+    }
+
+    public void TraverseDepthFirst(NodeT seedNode, Action<NodeT> onNode, Action<NodeT, NodeT, EdgeT> onEdge)
+    {
         HashSet<Node> visited = new();
         Stack<Node> toBeVisited = new();
-        Node seed = FirstOrDefault(nodes.Values, null);
-        if (seed != null) toBeVisited.Push(seed);
+        toBeVisited.Push(nodes[seedNode]);
         while (toBeVisited.Count > 0)
         {
             Node node = toBeVisited.Pop();
@@ -203,10 +209,16 @@ public class Graph<NodeT, EdgeT> //where EdgeT : IComparable<EdgeT>
 
     public void TraverseBreadthFirst(Action<NodeT> onNode, Action<NodeT, NodeT, EdgeT> onEdge)
     {
+        if (nodes.Count == 0) return;
+        NodeT seed = FirstOrException(nodes.Keys);
+        TraverseBreadthFirst(seed, onNode, onEdge);
+    }
+
+    public void TraverseBreadthFirst(NodeT seedNode, Action<NodeT> onNode, Action<NodeT, NodeT, EdgeT> onEdge)
+    {
         HashSet<Node> visited = new();
         Queue<Node> toBeVisited = new();
-        Node seed = FirstOrDefault(nodes.Values, null);
-        if (seed != null) toBeVisited.Enqueue(seed);
+        toBeVisited.Enqueue(nodes[seedNode]);
         while (toBeVisited.Count > 0)
         {
             Node node = toBeVisited.Dequeue();
