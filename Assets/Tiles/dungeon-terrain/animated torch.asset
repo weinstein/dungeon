@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: animated torch
   m_EditorClassIdentifier: 
   m_AnimatedSprites:
-  - {fileID: 705309040, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
   - {fileID: 803609985, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
+  - {fileID: 1126920465, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
   m_MinSpeed: 1
   m_MaxSpeed: 1
   m_AnimationStartTime: 0
