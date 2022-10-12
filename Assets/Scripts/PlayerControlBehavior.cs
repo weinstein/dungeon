@@ -7,26 +7,25 @@ using UnityEngine.Tilemaps;
 public class PlayerControlBehavior : MonoBehaviour
 {
     private Vector3Int targetCell;
+    private Vector3Int prevCell;
     private float tolerance;
     private float speed;
     public float cellSpeed;
 
-    private Grid grid;
-    public Tilemap walls;
+    public Grid grid;
 
     [HideInInspector] new public SpriteRenderer renderer;
     private void Reset()
     {
         renderer = GetComponent<SpriteRenderer>();
     }
-
-    // Start is called before the first frame update
+    
     void Start()
     {
-        grid = walls.layoutGrid;
-        tolerance = 1e-6f;
+        tolerance = 1e-3f;
         speed = Mathf.Max(grid.cellSize.x, grid.cellSize.y) * cellSpeed;
         targetCell = CurrentCell();
+        prevCell = targetCell;
     }
 
     Vector3Int CurrentCell()
@@ -44,6 +43,30 @@ public class PlayerControlBehavior : MonoBehaviour
         return (Target() - transform.position).sqrMagnitude > tolerance;
     }
 
+    bool RayCast(Vector3Int src, Vector3Int dst)
+    {
+        Vector3 origin = grid.CellToWorld(src) + 0.5f * grid.cellSize;
+        Vector3 dir = (grid.CellToWorld(dst) + 0.5f * grid.cellSize ) - origin;
+        Debug.DrawRay(origin, dir, Color.red, 1.0f);
+        List<RaycastHit2D> results = new();
+        ContactFilter2D filter = new();
+        filter.NoFilter();
+        int hits = Physics2D.Raycast(origin, dir.normalized, filter, results, dir.magnitude);
+        foreach (RaycastHit2D result in results)
+        {
+            if (!result.collider.CompareTag("Player") && result.fraction > 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        targetCell = prevCell;
+    }
+
     void InputDirection()
     {
         Vector3Int next = CurrentCell();
@@ -52,26 +75,21 @@ public class PlayerControlBehavior : MonoBehaviour
             next += Vector3Int.left;
             renderer.flipX = true;
         }
-        if (Input.GetKeyDown(KeyCode.D))
+        else if (Input.GetKeyDown(KeyCode.D))
         {
             next += Vector3Int.right;
             renderer.flipX = false;
         }
-        if (Input.GetKeyDown(KeyCode.W))
+        else if (Input.GetKeyDown(KeyCode.W))
         {
             next += Vector3Int.up;
         }
-        if (Input.GetKeyDown(KeyCode.S))
+        else if (Input.GetKeyDown(KeyCode.S))
         {
             next += Vector3Int.down;
         }
-        if (walls.GetTile(next) == null)
-        {
-            targetCell = next;
-        } else
-        {
-            // collision!
-        }
+
+        targetCell = next;
     }
 
     // Update is called once per frame
@@ -79,10 +97,10 @@ public class PlayerControlBehavior : MonoBehaviour
     {
         if (!IsMoving())
         {
+            prevCell = targetCell;
             InputDirection();
         } else
         {
-            //transform.position = Vector3.Lerp(transform.position, Target(), speed * Time.deltaTime);
             Vector3 delta = Target() - transform.position;
             float dist = speed * Time.deltaTime;
             if (delta.magnitude <= dist)

@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 262911075124833643}
   - component: {fileID: 1473396424541578165}
-  - component: {fileID: 5860770909556909283}
   - component: {fileID: 3356945864123049494}
+  - component: {fileID: 9044697959472477447}
   m_Layer: 0
   m_Name: chicken
   m_TagString: Untagged
@@ -86,32 +86,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!61 &5860770909556909283
-BoxCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3169657614199024268}
-  m_Enabled: 1
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_UsedByEffector: 0
-  m_UsedByComposite: 0
-  m_Offset: {x: -0.13054305, y: -0.09037584}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
-    newSize: {x: 1, y: 1}
-    adaptiveTilingThreshold: 0.5
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  serializedVersion: 2
-  m_Size: {x: 0.37741053, y: 0.41757786}
-  m_EdgeRadius: 0
 --- !u!114 &3356945864123049494
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126,3 +100,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: chicken
   count: 1
+--- !u!58 &9044697959472477447
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3169657614199024268}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: -0.15740791, y: -0.08994734}
+  serializedVersion: 2
+  m_Radius: 0.25264466

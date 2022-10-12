@@ -138,8 +138,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 842a5b61dee2616469b6acd875758f90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cellSpeed: 16
-  walls: {fileID: 0}
+  cellSpeed: 8
+  grid: {fileID: 0}
   renderer: {fileID: 3423770087309587969}
 --- !u!61 &2735373647311977882
 BoxCollider2D:
