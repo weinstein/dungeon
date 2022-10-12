@@ -21,6 +21,16 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     public float edgeDensity = 0.1f;
     public int corridorStraightness = 4;
 
+    public int numClutterMin = 0;
+    public int numClutterMax = 2;
+    [Serializable]
+    public struct WeightedObject
+    {
+        public GameObject o;
+        public int weight;
+    }
+    public List<WeightedObject> clutterTable = new();
+
     public class Room
     {
         public BoundsInt bounds = new();
@@ -45,12 +55,21 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         {
             return bounds.ToString();
         }
+
+        public List<GameObject> clutter = new();
     }
     List<Room> rooms = new();
     DistanceGraph<Room> roomGraph = new();
 
     public override void Clear(TileBase fillWith)
     {
+        foreach (Room r in rooms)
+        {
+            foreach (GameObject o in r.clutter)
+            {
+                DestroyImmediate(o);
+            }
+        }
         rooms.Clear();
         roomGraph.Clear();
         base.Clear(fillWith);
@@ -370,36 +389,83 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         Debug.DrawLine(worldPos1, worldPos2, c);
     }
 
-    void DebugDrawArrow(Vector2 gridPt1, Vector2 gridPt2, Color c, float size) {
+    void DebugDrawArrow(Vector2 gridPt1, Vector2 gridPt2, Color c) {
         Vector3 worldPos1 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt1.x * tilemap.cellSize.x, gridPt1.y * tilemap.cellSize.y);
         Vector3 worldPos2 = tilemap.CellToWorld(Vector3Int.zero) + new Vector3(gridPt2.x * tilemap.cellSize.x, gridPt2.y * tilemap.cellSize.y);
-        
-        size *= (worldPos1 - worldPos2).magnitude;
-        Debug.DrawLine(worldPos1, worldPos2, c);
-        Debug.DrawLine(worldPos2 + size * new Vector3(-1, -1), worldPos2 + size * new Vector3(1, 1), c);
-        Debug.DrawLine(worldPos2 + size * new Vector3(-1, 1), worldPos2 + size * new Vector3(1, -1), c);
+        Debug.DrawRay(worldPos1, worldPos2, c);
     }
 
     public void Update()
     {
         triangulation.ForEachEdge((p1, p2, d) =>
         {
-            DebugDrawLine(p1, p2, Color.gray);
+            DebugDrawArrow(p1, p2, Color.gray);
         });
         roomGraph.ForEachEdge((r1, r2, d) => {
-            DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.green);
+            DebugDrawArrow(r1.bounds.center, r2.bounds.center, Color.green);
         });
         for (int i = 1; i < criticalPath.Count; ++i)
         {
             Room r1 = criticalPath[i - 1];
             Room r2 = criticalPath[i];
-            if (roomGraph.ContainsEdge(r1, r2) || roomGraph.ContainsEdge(r2, r1))
-            {
-                DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.blue);
-            } else
-            {
-                DebugDrawLine(r1.bounds.center, r2.bounds.center, Color.red);
-            }
+            Color c = (roomGraph.ContainsEdge(r1, r2) || roomGraph.ContainsEdge(r2, r1)) ? Color.blue : Color.red;
+            DebugDrawArrow(r1.bounds.center, r2.bounds.center, c);
+        }
+    }
+
+    void PlaceItemRandomly(Room r, GameObject prefab)
+    {
+        BoundsInt b = r.UnpadFloorBounds(padding, wallHeight);
+        int x, y;
+        bool validPos = false;
+        int attempts = b.size.x * b.size.y * 2;
+        do
+        {
+            x = Random.Range(b.xMin, b.xMax);
+            y = Random.Range(b.yMin, b.yMax);
+            validPos = IsPositionEmpty(x, y);
+        } while (!validPos && attempts-- > 0);
+        if (!validPos)
+        {
+            Debug.LogError("room is too full to find an available spot for item " + prefab.name);
+            return;
+        }
+        Vector3 worldPos = tilemap.CellToWorld(new(x, y)) + 0.5f * tilemap.cellSize;
+        var item = GameObject.Instantiate(prefab);
+        item.transform.parent = transform;
+        item.transform.transform.position = worldPos;
+        item.SetActive(true);
+        r.clutter.Add(item);
+    }
+
+    bool IsPositionEmpty(int x, int y)
+    {
+        Vector2 worldPos = tilemap.CellToWorld(new(x, y)) + 0.5f * tilemap.cellSize;
+        var collider = Physics2D.OverlapBox(worldPos, 0.5f * tilemap.cellSize, 0f);
+        if (collider != null) Debug.Log("item at " + x + "," + y + ": " + collider.gameObject.name);
+        return collider == null;
+    }
+
+    GameObject RandomClutter()
+    {
+        int totalWeight = 0;
+        foreach (WeightedObject elem in clutterTable) totalWeight += elem.weight;
+        int r = Random.Range(0, totalWeight);
+        foreach (WeightedObject elem in clutterTable)
+        {
+            if (r < elem.weight) return elem.o;
+            r -= elem.weight;
+        }
+        return null;
+    }
+
+    void PopulateWithClutter(Room r)
+    {
+        int n = Random.Range(numClutterMin, numClutterMax + 1);
+        for (int i = 0; i < n; ++i)
+        {
+            GameObject o = RandomClutter();
+            PlaceItemRandomly(r, o);
         }
     }
 
@@ -436,6 +502,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         });
         Debug.Log(roomGraph);
         criticalPath = roomGraph.Undirected().LongestPath();
+        rooms.ForEach(PopulateWithClutter);
         RenderToTilemap();
     }
 }
