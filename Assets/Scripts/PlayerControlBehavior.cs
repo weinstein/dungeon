@@ -70,21 +70,23 @@ public class PlayerControlBehavior : MonoBehaviour
     void InputDirection()
     {
         Vector3Int next = CurrentCell();
-        if (Input.GetKeyDown(KeyCode.A))
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+        if (h < 0)
         {
             next += Vector3Int.left;
             renderer.flipX = true;
         }
-        else if (Input.GetKeyDown(KeyCode.D))
+        else if (h > 0)
         {
             next += Vector3Int.right;
             renderer.flipX = false;
         }
-        else if (Input.GetKeyDown(KeyCode.W))
+        else if (v > 0)
         {
             next += Vector3Int.up;
         }
-        else if (Input.GetKeyDown(KeyCode.S))
+        else if (v < 0)
         {
             next += Vector3Int.down;
         }
