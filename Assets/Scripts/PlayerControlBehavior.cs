@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,8 +25,7 @@ public class PlayerControlBehavior : MonoBehaviour
     {
         tolerance = 1e-3f;
         speed = Mathf.Max(grid.cellSize.x, grid.cellSize.y) * cellSpeed;
-        targetCell = CurrentCell();
-        prevCell = targetCell;
+        ResetPosition(transform.position);
     }
 
     Vector3Int CurrentCell()
@@ -36,6 +36,13 @@ public class PlayerControlBehavior : MonoBehaviour
     Vector3 Target()
     {
         return grid.GetCellCenterWorld(targetCell);
+    }
+
+    public void ResetPosition(Vector3 x)
+    {
+        transform.position = x;
+        targetCell = CurrentCell();
+        prevCell = targetCell;
     }
 
     bool IsMoving()

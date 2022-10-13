@@ -32,6 +32,8 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     }
     public List<WeightedObject> clutterTable = new();
 
+    public GameObject exit;
+
     public class Room
     {
         public BoundsInt bounds = new();
@@ -62,11 +64,12 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     public override void Clear(TileBase fillWith)
     {
-        while (transform.childCount > 0)
+        for (int i = transform.childCount; i-- > 0;)
         {
-            GameObject o = transform.GetChild(0).gameObject;
+            GameObject o = transform.GetChild(i).gameObject;
             Debug.Log("destroy child " + o.name);
-            DestroyImmediate(o);
+            if (!Application.isPlaying) DestroyImmediate(o);
+            else Destroy(o);
         }
         rooms.Clear();
         roomGraph.Clear();
@@ -377,11 +380,19 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             Debug.LogError("unpathable rooms: " + e.Item1.bounds + " => " + e.Item2.bounds);
             roomGraph.RemoveUndirected(e.Item1, e.Item2);
         }
+        PruneUnreachableRooms(criticalPath[0]);
 
         Room startingRoom = criticalPath[0];
         RenderTile(Center(startingRoom.UnpadFloorBounds(padding, wallHeight)), startTile);
+        
         Room endingRoom = criticalPath[criticalPath.Count - 1];
-        RenderTile(Center(endingRoom.UnpadFloorBounds(padding, wallHeight)), endTile);
+        Vector3Int endingCell = Center(endingRoom.UnpadFloorBounds(padding, wallHeight));
+        //RenderTile(endingCell, endTile);
+        var nextExit = (GameObject)PrefabUtility.InstantiatePrefab(exit);
+        nextExit.transform.parent = transform;
+        nextExit.transform.position = tilemap.CellToWorld(endingCell) + 0.5f * tilemap.cellSize;
+        nextExit.SetActive(true);
+
         tilemap.RefreshAllTiles();
     }
 
@@ -436,7 +447,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         List<Vector3Int> options = new();
         foreach (Vector3Int pos in r.UnpadFloorBounds(padding, wallHeight).allPositionsWithin)
         {
-            options.Add(pos);
+            if (tilemap.GetTile(pos) == floorTile) options.Add(pos);
         }
         RandomShuffle(options);
         int n = Random.Range(numClutterMin, numClutterMax + 1);
@@ -461,6 +472,10 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         {
             rooms.Remove(r);
             roomGraph.Remove(r);
+            foreach (Vector3Int pos in r.bounds.allPositionsWithin)
+            {
+                RenderTile(pos, emptyTile);
+            }
         }
         if (unreachable.Count > 0) Debug.LogWarning("pruned " + unreachable.Count + " unreachable rooms");
     }
@@ -498,8 +513,13 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         });
         Debug.Log(roomGraph);
         criticalPath = roomGraph.Undirected().LongestPath();
-        PruneUnreachableRooms(criticalPath[0]);
-        rooms.ForEach(PopulateWithClutter);
         RenderToTilemap();
+        rooms.ForEach(PopulateWithClutter);
+    }
+
+    public Vector3 StartingPosition()
+    {
+        Vector3Int cell = Center(criticalPath[0].UnpadFloorBounds(padding, wallHeight));
+        return tilemap.CellToWorld(cell) + tilemap.cellSize * 0.5f;
     }
 }
