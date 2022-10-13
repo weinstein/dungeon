@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
@@ -17,6 +18,34 @@ public class LineOfSightBehavior : MonoBehaviour
     void Start()
     {
         
+    }
+
+    static List<Vector3Int> PlotLine(Vector3Int src, Vector3Int dst)
+    {
+        int dx = Math.Abs(src.x - dst.x);
+        int sx = src.x < dst.x ? 1 : -1;
+        int dy = -Math.Abs(src.y - dst.y);
+        int sy = src.y < dst.y ? 1 : -1;
+        int error = dx + dy;
+        List<Vector3Int> outputs = new();
+        while (true)
+        {
+            outputs.Add(src);
+            if (src.x == dst.x && src.y == dst.y) return outputs;
+            int e2 = 2 * error;
+            if (e2 >= dy)
+            {
+                if (src.x == dst.x) return outputs;
+                error += dy;
+                src.x += sx;
+            }
+            if (e2 <= dx)
+            {
+                if (src.y == dst.y) return outputs;
+                error += dx;
+                src.y += sy;
+            }
+        }
     }
 
     // Update is called once per frame
@@ -44,22 +73,20 @@ public class LineOfSightBehavior : MonoBehaviour
                 
             } else
             {
-                dst = hits[0].point;
+                dst = (Vector3)hits[0].point + dir * 0.01f;
             }
             Debug.DrawLine(src, dst, Color.white);
-            for (float d = 0; d <= (dst - src).magnitude + grid.cellSize.x/2f; d += grid.cellSize.x / 2f)
+            foreach (Vector3Int cellPos in PlotLine(grid.WorldToCell(src), grid.WorldToCell(dst)))
             {
-                Vector3 pt = src + d * dir;
-                Vector3Int cellPt = grid.WorldToCell(pt);
-                if (!revealed.Contains(cellPt))
+                if (!revealed.Contains(cellPos))
                 {
-                    Vector3 corner1 = grid.CellToWorld(cellPt);
+                    Vector3 corner1 = grid.CellToWorld(cellPos);
                     Vector3 corner2 = corner1 + grid.cellSize;
                     var newMask = (GameObject)PrefabUtility.InstantiatePrefab(spriteMaskPrefab);
                     newMask.transform.parent = transform;
                     newMask.transform.position = (corner1 + corner2) / 2f;
                     newMask.transform.localScale = (corner2 - corner1);
-                    revealed.Add(cellPt);
+                    revealed.Add(cellPos);
                 }
             }
         }
