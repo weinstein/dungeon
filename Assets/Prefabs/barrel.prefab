@@ -84,7 +84,7 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
+  m_MaskInteraction: 1
   m_SpriteSortPoint: 0
 --- !u!61 &98002011842164547
 BoxCollider2D:
@@ -127,3 +127,4 @@ MonoBehaviour:
   contents: []
   spawnRadius: 2
   emptySprite: {fileID: 9241096, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
+  destroyDelaySec: 1
