@@ -444,6 +444,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     void PopulateWithClutter(Room r)
     {
+        // TODO: need to prevent clutter from blocking the critical path
         List<Vector3Int> options = new();
         foreach (Vector3Int pos in r.UnpadFloorBounds(padding, wallHeight).allPositionsWithin)
         {
@@ -472,10 +473,14 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         {
             rooms.Remove(r);
             roomGraph.Remove(r);
+            // Clear room tiles
             foreach (Vector3Int pos in r.bounds.allPositionsWithin)
             {
                 RenderTile(pos, emptyTile);
             }
+            // TODO: should clear corridors too. Or better yet, draw corridors
+            // while traversing, so that unpathable rooms never get drawn in
+            // the first place.
         }
         if (unreachable.Count > 0) Debug.LogWarning("pruned " + unreachable.Count + " unreachable rooms");
     }

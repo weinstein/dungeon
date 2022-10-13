@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-[RequireComponent(typeof(SpriteRenderer))]
+[RequireComponent(typeof(SpriteRenderer), typeof(AudioSource))]
 public class PlayerControlBehavior : MonoBehaviour
 {
     private Vector3Int targetCell;
@@ -15,10 +15,12 @@ public class PlayerControlBehavior : MonoBehaviour
 
     public Grid grid;
 
+    [HideInInspector] public AudioSource step;
     [HideInInspector] new public SpriteRenderer renderer;
     private void Reset()
     {
         renderer = GetComponent<SpriteRenderer>();
+        step = GetComponent<AudioSource>();
     }
     
     void Start()
@@ -79,7 +81,11 @@ public class PlayerControlBehavior : MonoBehaviour
             next += Vector3Int.down;
         }
 
-        targetCell = next;
+        if (next != CurrentCell())
+        {
+            targetCell = next;
+            step.Play();
+        }
     }
 
     void Update()

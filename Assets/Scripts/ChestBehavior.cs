@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(SpriteRenderer))]
+[RequireComponent(typeof(SpriteRenderer), typeof(AudioSource))]
 public class ChestBehavior : MonoBehaviour
 {
     public List<ItemDescriptor> contents = new();
@@ -19,25 +19,33 @@ public class ChestBehavior : MonoBehaviour
         EMPTY,
     }
 
+    [HideInInspector] public AudioSource audioSrc;
+    public AudioClip hitSfx;
+    public AudioClip dispenseSfx;
+
     [HideInInspector] public new SpriteRenderer renderer;
     private void Reset()
     {
         renderer = GetComponent<SpriteRenderer>();
+        audioSrc = GetComponent<AudioSource>();
     }
 
     void Open()
     {
         renderer.sprite = openSprite;
         state = State.OPEN;
+        audioSrc.PlayOneShot(hitSfx);
     }
 
     void Empty()
     {
         renderer.sprite = emptySprite;
         state = State.EMPTY;
+        audioSrc.PlayOneShot(dispenseSfx);
 
         foreach (ItemDescriptor desc in contents)
         {
+            // TODO: should pick an empty grid cell within the radius
             float angle = Random.Range(0, 2 * Mathf.PI);
             float radius = spawnRadius * Mathf.Sqrt(Random.Range(0f, 1f));
             float dx = radius * Mathf.Cos(angle);

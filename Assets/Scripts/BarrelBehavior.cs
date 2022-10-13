@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public class BarrelBehavior : MonoBehaviour
 {
     public List<ItemDescriptor> contents = new();
@@ -11,14 +12,23 @@ public class BarrelBehavior : MonoBehaviour
     public Sprite emptySprite;
     public float destroyDelaySec = 1.0f;
 
+    [HideInInspector] public AudioSource audioSrc;
+
+    private void Reset()
+    {
+        audioSrc = GetComponent<AudioSource>();
+    }
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Player"))
         {
             if (!opened)
             {
+                audioSrc.Play();
                 foreach (ItemDescriptor desc in contents)
                 {
+                    // TODO: should pick an empty grid cell within the radius
                     float angle = Random.Range(0, 2 * Mathf.PI);
                     float radius = spawnRadius * Mathf.Sqrt(Random.Range(0f, 1f));
                     float dx = radius * Mathf.Cos(angle);
