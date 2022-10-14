@@ -15,12 +15,6 @@ public class LineOfSightBehavior : MonoBehaviour
     private HashSet<Vector3Int> revealed = new();
     private List<GameObject> masks = new();
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
     public void Reset()
     {
         revealed.Clear();
@@ -94,7 +88,11 @@ public class LineOfSightBehavior : MonoBehaviour
                 {
                     Vector3 corner1 = grid.CellToWorld(cellPos);
                     Vector3 corner2 = corner1 + grid.cellSize;
+#if UNITY_EDITOR
                     var newMask = (GameObject)PrefabUtility.InstantiatePrefab(spriteMaskPrefab);
+#else
+                    var newMask = GameObject.Instantiate(spriteMaskPrefab);
+#endif
                     newMask.transform.parent = transform;
                     newMask.transform.position = (corner1 + corner2) / 2f;
                     newMask.transform.localScale = (corner2 - corner1);

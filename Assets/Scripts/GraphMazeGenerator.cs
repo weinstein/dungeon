@@ -388,10 +388,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         Room endingRoom = criticalPath[criticalPath.Count - 1];
         Vector3Int endingCell = Center(endingRoom.UnpadFloorBounds(padding, wallHeight));
         //RenderTile(endingCell, endTile);
-        var nextExit = (GameObject)PrefabUtility.InstantiatePrefab(exit);
-        nextExit.transform.parent = transform;
-        nextExit.transform.position = tilemap.CellToWorld(endingCell) + 0.5f * tilemap.cellSize;
-        nextExit.SetActive(true);
+        InstantiatePrefab(exit, tilemap.CellToWorld(endingCell) + 0.5f * tilemap.cellSize);
 
         tilemap.RefreshAllTiles();
     }
@@ -442,13 +439,28 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         return null;
     }
 
+    GameObject InstantiatePrefab(GameObject template, Vector3 pos)
+    {
+#if UNITY_EDITOR
+        var o = (GameObject)PrefabUtility.InstantiatePrefab(template);
+#else
+        var o = GameObject.Instantiate(template);
+#endif
+        o.transform.parent = transform;
+        o.transform.position = pos;
+        o.SetActive(true);
+        return o;
+    }
+
     void PopulateWithClutter(Room r)
     {
         // TODO: need to prevent clutter from blocking the critical path
         List<Vector3Int> options = new();
         foreach (Vector3Int pos in r.UnpadFloorBounds(padding, wallHeight).allPositionsWithin)
         {
-            if (tilemap.GetTile(pos) == floorTile) options.Add(pos);
+            if (r == criticalPath[criticalPath.Count - 1] && pos == Center(r.UnpadFloorBounds(padding, wallHeight))) continue;
+            if (tilemap.GetTile(pos) != floorTile) continue;
+            options.Add(pos);
         }
         RandomShuffle(options);
         int n = Random.Range(numClutterMin, numClutterMax + 1);
@@ -457,10 +469,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
             GameObject o = RandomClutter();
             Vector3Int pos = options[i];
             Vector3 worldPos = tilemap.CellToWorld(pos) + 0.5f * tilemap.cellSize;
-            var item = (GameObject)PrefabUtility.InstantiatePrefab(o);
-            item.transform.parent = transform;
-            item.transform.transform.position = worldPos;
-            item.SetActive(true);
+            InstantiatePrefab(o, worldPos);
         }
     }
 
