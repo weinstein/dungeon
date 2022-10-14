@@ -7,6 +7,7 @@ public class ExitLevelBehavior : MonoBehaviour
     GameObject parentTilemap;
     GraphMazeGenerator gen;
     LineOfSightBehavior lineOfSight;
+    public AudioClip sfx;
 
     // Start is called before the first frame update
     void Start()
@@ -20,6 +21,7 @@ public class ExitLevelBehavior : MonoBehaviour
     {
         if (collision.CompareTag("Player"))
         {
+            collision.gameObject.GetComponent<AudioSource>().PlayOneShot(sfx);
             gen.Generate();
             PlayerControlBehavior playerControl = collision.gameObject.GetComponent<PlayerControlBehavior>();
             playerControl.ResetPosition(gen.StartingPosition());
