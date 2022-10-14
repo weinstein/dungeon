@@ -7,7 +7,7 @@
         "GameAssembly"
     ],
     "includePlatforms": [
-        "Editor"
+        "WebGL"
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
