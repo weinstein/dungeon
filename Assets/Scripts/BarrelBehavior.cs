@@ -5,7 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(AudioSource))]
 public class BarrelBehavior : MonoBehaviour
 {
-    public List<ItemDescriptor> contents = new();
+    public List<GameObject> contents = new();
     public float spawnRadius = 4f;
 
     private bool opened = false;
@@ -26,7 +26,7 @@ public class BarrelBehavior : MonoBehaviour
             if (!opened)
             {
                 audioSrc.Play();
-                foreach (ItemDescriptor desc in contents)
+                foreach (GameObject prefab in contents)
                 {
                     // TODO: should pick an empty grid cell within the radius
                     float angle = Random.Range(0, 2 * Mathf.PI);
@@ -36,7 +36,7 @@ public class BarrelBehavior : MonoBehaviour
                     Vector3 pos = transform.position;
                     pos.x += dx;
                     pos.y += dy;
-                    GameObject o = Instantiate(desc.prefab, pos, transform.rotation);
+                    GameObject o = Instantiate(prefab, pos, transform.rotation);
                 }
                 opened = true;
                 GetComponent<SpriteRenderer>().sprite = emptySprite;

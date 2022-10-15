@@ -35,6 +35,9 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     public GameObject exit;
 
+    public GameObject key;
+    public GameObject lockedDoor;
+
     public class Room
     {
         public BoundsInt bounds = new();

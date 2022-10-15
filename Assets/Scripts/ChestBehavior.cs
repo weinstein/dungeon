@@ -5,7 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(SpriteRenderer), typeof(AudioSource))]
 public class ChestBehavior : MonoBehaviour
 {
-    public List<ItemDescriptor> contents = new();
+    public List<GameObject> contents = new();
     public float spawnRadius = 4f;
 
     public Sprite openSprite;
@@ -43,7 +43,7 @@ public class ChestBehavior : MonoBehaviour
         state = State.EMPTY;
         audioSrc.PlayOneShot(dispenseSfx);
 
-        foreach (ItemDescriptor desc in contents)
+        foreach (GameObject prefab in contents)
         {
             // TODO: should pick an empty grid cell within the radius
             float angle = Random.Range(0, 2 * Mathf.PI);
@@ -53,7 +53,7 @@ public class ChestBehavior : MonoBehaviour
             Vector3 pos = transform.position;
             pos.x += dx;
             pos.y += dy;
-            GameObject o = Instantiate(desc.prefab);
+            GameObject o = Instantiate(prefab);
             o.transform.parent = transform;
             o.transform.position = pos;
         }

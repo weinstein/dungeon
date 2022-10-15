@@ -100,7 +100,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   contents:
-  - {fileID: 11400000, guid: e6c5ebfc034b5be46bdb5403d0705dbe, type: 2}
+  - {fileID: 4926942174136557876, guid: 1bd146e874a9b4b4086f62dff70b4f92, type: 3}
   spawnRadius: 2
   openSprite: {fileID: 926017735, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
   emptySprite: {fileID: -426830496, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}

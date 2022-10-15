@@ -19,4 +19,9 @@ public class InventoryData
         if (items.ContainsKey(name) && items[name] > count) items[name] -= count;
         else items.Remove(name);
     }
+
+    public bool Contains(string name, int count)
+    {
+        return items.ContainsKey(name) && items[name] >= count;
+    }
 }
