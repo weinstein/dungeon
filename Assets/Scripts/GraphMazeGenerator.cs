@@ -17,6 +17,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     public int minRoomSize = 3;
     public int maxRoomSize = 3;
     public int padding = 1;
+    public int boundaryPadding = 1;
     public int wallHeight = 1;
     public int numRooms = 3;
     public float edgeDensity = 0.1f;
@@ -67,7 +68,6 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         for (int i = transform.childCount; i-- > 0;)
         {
             GameObject o = transform.GetChild(i).gameObject;
-            Debug.Log("destroy child " + o.name);
             if (!Application.isPlaying) DestroyImmediate(o);
             else Destroy(o);
         }
@@ -91,8 +91,8 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     {
         int w = RandomRangeApproxNormal(minRoomSize + 2 * padding, maxRoomSize + 2 * padding + 1);
         int h = RandomRangeApproxNormal(minRoomSize + 2 * padding, maxRoomSize + 2 * padding + 1);
-        int x = RandomRangeApproxNormal(tilemap.cellBounds.xMin, tilemap.cellBounds.xMax - w - 1);
-        int y = RandomRangeApproxNormal(tilemap.cellBounds.yMin, tilemap.cellBounds.yMax - h - 1);
+        int x = RandomRangeApproxNormal(tilemap.cellBounds.xMin + boundaryPadding - padding, tilemap.cellBounds.xMax - w - 1 - (boundaryPadding - padding));
+        int y = RandomRangeApproxNormal(tilemap.cellBounds.yMin + boundaryPadding - padding, tilemap.cellBounds.yMax - h - 1 - (boundaryPadding - padding));
         BoundsInt ret = new();
         ret.xMin = x;
         ret.yMin = y;
@@ -136,22 +136,23 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
 
     Vector2Int JiggleRoomAgainstTileMapBoundary(Room room)
     {
+        BoundsInt roomBounds = room.UnpadBounds(padding - boundaryPadding);
         Vector2Int overlap = Vector2Int.zero;
-        if (room.bounds.xMin < tilemap.cellBounds.xMin)
+        if (roomBounds.xMin < tilemap.cellBounds.xMin)
         {
-            overlap.x = tilemap.cellBounds.xMin - room.bounds.xMin;
+            overlap.x = tilemap.cellBounds.xMin - roomBounds.xMin;
         }
-        if (room.bounds.xMax > tilemap.cellBounds.xMax)
+        if (roomBounds.xMax > tilemap.cellBounds.xMax)
         {
-            overlap.x = tilemap.cellBounds.xMax - room.bounds.xMax;
+            overlap.x = tilemap.cellBounds.xMax - roomBounds.xMax;
         }
-        if (room.bounds.yMin < tilemap.cellBounds.yMin)
+        if (roomBounds.yMin < tilemap.cellBounds.yMin)
         {
-            overlap.y = tilemap.cellBounds.yMin - room.bounds.yMin;
+            overlap.y = tilemap.cellBounds.yMin - roomBounds.yMin;
         }
-        if (room.bounds.yMax > tilemap.cellBounds.yMax)
+        if (roomBounds.yMax > tilemap.cellBounds.yMax)
         {
-            overlap.y = tilemap.cellBounds.yMax - room.bounds.yMax;
+            overlap.y = tilemap.cellBounds.yMax - roomBounds.yMax;
         }
         room.bounds.x += overlap.x;
         room.bounds.y += overlap.y;

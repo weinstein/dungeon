@@ -13,17 +13,16 @@ public class LineOfSightBehavior : MonoBehaviour
     public float viewDistance = 64f;
 
     private HashSet<Vector3Int> revealed = new();
-    private List<GameObject> masks = new();
 
-    public void Reset()
+    public void ResetRevealedTiles()
     {
         revealed.Clear();
-        foreach (GameObject o in masks)
+        for (int i = transform.childCount; i-- > 0;)
         {
+            GameObject o = transform.GetChild(i).gameObject;
             if (!Application.isPlaying) DestroyImmediate(o);
             else Destroy(o);
         }
-        masks.Clear();
     }
 
     static List<Vector3Int> PlotLine(Vector3Int src, Vector3Int dst)
@@ -96,7 +95,6 @@ public class LineOfSightBehavior : MonoBehaviour
                     newMask.transform.parent = transform;
                     newMask.transform.position = (corner1 + corner2) / 2f;
                     newMask.transform.localScale = (corner2 - corner1);
-                    masks.Add(newMask);
                     revealed.Add(cellPos);
                 }
             }

@@ -25,7 +25,7 @@ public class ExitLevelBehavior : MonoBehaviour
             gen.Generate();
             PlayerControlBehavior playerControl = collision.gameObject.GetComponent<PlayerControlBehavior>();
             playerControl.ResetPosition(gen.StartingPosition());
-            lineOfSight.Reset();
+            lineOfSight.ResetRevealedTiles();
         }
     }
 }
