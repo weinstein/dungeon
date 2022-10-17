@@ -9,6 +9,8 @@ public class ExitLevelBehavior : MonoBehaviour
     LineOfSightBehavior lineOfSight;
     public AudioClip sfx;
 
+    private GameObject player = null;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -17,15 +19,29 @@ public class ExitLevelBehavior : MonoBehaviour
         lineOfSight = GameObject.FindObjectOfType<LineOfSightBehavior>();
     }
 
+    private void Update()
+    {
+        if (player != null)
+        {
+            player.GetComponent<AudioSource>().PlayOneShot(sfx);
+            var oldMode = Physics2D.simulationMode;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+            gen.Generate();
+            PlayerControlBehavior playerControl = player.GetComponent<PlayerControlBehavior>();
+            playerControl.ResetPosition(gen.StartingPosition());
+            Physics2D.SyncTransforms();
+            Physics2D.Simulate(Time.fixedDeltaTime);
+            Physics2D.SyncTransforms();
+            Physics2D.simulationMode = oldMode;
+            lineOfSight.ResetRevealedTiles();
+        }
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Player"))
         {
-            collision.gameObject.GetComponent<AudioSource>().PlayOneShot(sfx);
-            gen.Generate();
-            PlayerControlBehavior playerControl = collision.gameObject.GetComponent<PlayerControlBehavior>();
-            playerControl.ResetPosition(gen.StartingPosition());
-            lineOfSight.ResetRevealedTiles();
+            player = collision.gameObject;
         }
     }
 }
