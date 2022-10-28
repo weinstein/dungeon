@@ -34,12 +34,15 @@ jobs:
           targetPlatform: WebGL
           buildsPath: build
 
+      - name: Remove unnecessary build data
+        run: rm -r build/WebGL/WebGL/index.html build/WebGL/WebGL/TemplateData
+
       - name: Push WebGL build to pages repo
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
         with:
-          source-directory: 'build/WebGL/WebGL/Build'
+          source-directory: 'build/WebGL/WebGL'
           destination-github-username: 'weinstein'
           destination-repository-name: 'weinstein.github.io'
           target-directory: 'games/dungeon'
