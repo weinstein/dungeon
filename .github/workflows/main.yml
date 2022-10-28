@@ -35,7 +35,7 @@ jobs:
           buildsPath: build
 
       - name: Remove unnecessary build data
-        run: rm -r build/WebGL/WebGL/index.html build/WebGL/WebGL/TemplateData
+        run: sudo rm -r build/WebGL/WebGL/index.html build/WebGL/WebGL/TemplateData
 
       - name: Push WebGL build to pages repo
         uses: cpina/github-action-push-to-another-repository@main
