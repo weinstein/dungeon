@@ -127,7 +127,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   contents:
   - {fileID: 4926942174136557876, guid: 1bd146e874a9b4b4086f62dff70b4f92, type: 3}
-  spawnRadius: 0
+  contents: {fileID: 4926942174136557876, guid: 1bd146e874a9b4b4086f62dff70b4f92, type: 3}
   emptySprite: {fileID: 9241096, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
   destroyDelaySec: 1
   audioSrc: {fileID: 6047341324516657041}
