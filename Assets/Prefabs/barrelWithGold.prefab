@@ -125,9 +125,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 908107e8615ced04e8c4b9292528dca1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  contents:
-  - {fileID: 4926942174136557876, guid: 1bd146e874a9b4b4086f62dff70b4f92, type: 3}
-  spawnRadius: 0
+  contents: {fileID: 4926942174136557876, guid: 1bd146e874a9b4b4086f62dff70b4f92, type: 3}
   emptySprite: {fileID: 9241096, guid: 3b16715484f32d340bcd5692b3f09808, type: 3}
   destroyDelaySec: 1
   audioSrc: {fileID: 6047341324516657041}

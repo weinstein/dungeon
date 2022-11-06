@@ -5,50 +5,29 @@ using UnityEngine;
 [RequireComponent(typeof(AudioSource))]
 public class BarrelBehavior : MonoBehaviour
 {
-    public List<GameObject> contents = new();
-    public float spawnRadius = 4f;
+    public GameObject contents;
 
     private bool opened = false;
     public Sprite emptySprite;
     public float destroyDelaySec = 1.0f;
 
-    [HideInInspector] public AudioSource audioSrc;
-
-    private void Reset()
-    {
-        audioSrc = GetComponent<AudioSource>();
-    }
-
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Player"))
+        if (collision.gameObject.CompareTag("Player") && !opened)
         {
-            if (!opened)
-            {
-                audioSrc.Play();
-                foreach (GameObject prefab in contents)
-                {
-                    // TODO: should pick an empty grid cell within the radius
-                    float angle = Random.Range(0, 2 * Mathf.PI);
-                    float radius = spawnRadius * Mathf.Sqrt(Random.Range(0f, 1f));
-                    float dx = radius * Mathf.Cos(angle);
-                    float dy = radius * Mathf.Sin(angle);
-                    Vector3 pos = transform.position;
-                    pos.x += dx;
-                    pos.y += dy;
-                    GameObject o = Instantiate(prefab, pos, transform.rotation);
-                }
-                opened = true;
-                GetComponent<SpriteRenderer>().sprite = emptySprite;
-                GetComponent<Collider2D>().enabled = false;
-                StartCoroutine(Delete());
-            }
-        }
-    }
+            GetComponent<AudioSource>().Play();
 
-    IEnumerator Delete()
-    {
-        yield return new WaitForSeconds(destroyDelaySec);
-        Destroy(gameObject);
+            if (contents != null)
+            {
+                GraphMazeGenerator mazeGen = transform.parent.GetComponent<GraphMazeGenerator>();
+                mazeGen.RemoveClutterAtWorldPos(transform.position);
+                mazeGen.SpawnClutterAtWorldPos(transform.position, contents);
+            }
+
+            opened = true;
+            GetComponent<SpriteRenderer>().sprite = emptySprite;
+            GetComponent<Collider2D>().enabled = false;
+            Destroy(gameObject, destroyDelaySec);
+        }
     }
 }

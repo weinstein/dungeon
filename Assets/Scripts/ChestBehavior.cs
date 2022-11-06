@@ -37,25 +37,38 @@ public class ChestBehavior : MonoBehaviour
         audioSrc.PlayOneShot(hitSfx);
     }
 
+    List<Vector3Int> PossibleSpawnPositions(GraphMazeGenerator mazeGen)
+    {
+        Vector3Int center = mazeGen.tilemap.WorldToCell(transform.position);
+        List<Vector3Int> choices = new();
+        for (int dx = -Mathf.FloorToInt(spawnRadius); dx <= Mathf.CeilToInt(spawnRadius); ++dx)
+        {
+            for (int dy = -Mathf.FloorToInt(spawnRadius); dy <= Mathf.CeilToInt(spawnRadius); ++dy)
+            {
+                Vector3Int cellPos = center + new Vector3Int(dx, dy);
+                if (dx * dx + dy * dy > spawnRadius * spawnRadius) continue;
+                if (mazeGen.CellPosIsOutOfBounds(cellPos)) continue;
+                if (mazeGen.FindClutterAtCellPos(cellPos) != null) continue;
+                choices.Add(cellPos);
+            }
+        }
+        return choices;
+    }
+
     void Empty()
     {
         renderer.sprite = emptySprite;
         state = State.EMPTY;
         audioSrc.PlayOneShot(dispenseSfx);
 
-        foreach (GameObject prefab in contents)
+        GraphMazeGenerator mazeGen = transform.parent.GetComponent<GraphMazeGenerator>();
+        List<Vector3Int> choices = PossibleSpawnPositions(mazeGen);
+        RandomUtil.Shuffle(choices);
+        for (int i = 0; i < contents.Count && i < choices.Count; ++i)
         {
-            // TODO: should pick an empty grid cell within the radius
-            float angle = Random.Range(0, 2 * Mathf.PI);
-            float radius = spawnRadius * Mathf.Sqrt(Random.Range(0f, 1f));
-            float dx = radius * Mathf.Cos(angle);
-            float dy = radius * Mathf.Sin(angle);
-            Vector3 pos = transform.position;
-            pos.x += dx;
-            pos.y += dy;
-            GameObject o = Instantiate(prefab);
-            o.transform.parent = transform;
-            o.transform.position = pos;
+            GameObject prefab = contents[i];
+            Vector3Int cellPos = choices[i];
+            mazeGen.SpawnClutterAtCellPos(cellPos, prefab);
         }
     }
 

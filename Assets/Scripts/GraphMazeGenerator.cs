@@ -66,8 +66,53 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
     List<Room> rooms = new();
     DistanceGraph<Room> roomGraph = new();
 
+    Dictionary<Vector3Int, GameObject> clutter = new();
+
+    public GameObject SpawnClutterAtCellPos(Vector3Int pos, GameObject prefab)
+    {
+        Vector3 worldPos = tilemap.CellToWorld((Vector3Int)pos) + 0.5f * tilemap.cellSize;
+        GameObject o = InstantiatePrefab(prefab, worldPos, tilemap.gameObject);
+        clutter.Add(pos, o);
+        return o;
+    }
+
+    public GameObject SpawnClutterAtWorldPos(Vector3 pos, GameObject prefab)
+    {
+        Vector3Int cellPos = tilemap.WorldToCell(pos);
+        GameObject o = InstantiatePrefab(prefab, pos, tilemap.gameObject);
+        clutter.Add(cellPos, o);
+        return o;
+    }
+
+    public bool RemoveClutterAtCellPos(Vector3Int pos)
+    {
+        GameObject o = clutter.GetValueOrDefault(pos, null);
+        // if (o != null) Destroy(o);
+        return clutter.Remove(pos);
+    }
+    public bool RemoveClutterAtWorldPos(Vector3 pos)
+    {
+        return RemoveClutterAtCellPos(tilemap.WorldToCell(pos));
+    }
+
+    public GameObject FindClutterAtCellPos(Vector3Int pos)
+    {
+        return clutter.GetValueOrDefault(pos, null);
+    }
+
+    public GameObject FindClutterAtWorldPos(Vector3 pos)
+    {
+        return FindClutterAtCellPos(tilemap.WorldToCell(pos));
+    }
+
+    public bool CellPosIsOutOfBounds(Vector3Int pos)
+    {
+        return tilemap.GetTile(pos) != floorTile;
+    }
+
     public override void Clear(TileBase fillWith)
     {
+        clutter.Clear();
         for (int i = transform.childCount; i-- > 0;)
         {
             GameObject o = transform.GetChild(i).gameObject;
@@ -162,36 +207,15 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         return overlap;
     }
 
-    static void RandomShuffle<T>(T[] elems)
-    {
-        for (int i = elems.Length - 1; i >= 1; --i)
-        {
-            int j = Random.Range(0, i);
-            T tmp = elems[i];
-            elems[i] = elems[j];
-            elems[j] = tmp;
-        }
-    }
-
-    static void RandomShuffle<T>(List<T> elems)
-    {
-        for (int i = elems.Count - 1; i >= 1; --i)
-        {
-            int j = Random.Range(0, i);
-            T tmp = elems[i];
-            elems[i] = elems[j];
-            elems[j] = tmp;
-        }
-    }
 
      bool JiggleRooms()
     {
         Room[] shuffledAnchors = new Room[rooms.Count];
         rooms.CopyTo(shuffledAnchors);
-        RandomShuffle(shuffledAnchors);
+        RandomUtil.Shuffle(shuffledAnchors);
         Room[] shuffledRooms = new Room[rooms.Count];
         rooms.CopyTo(shuffledRooms);
-        RandomShuffle(shuffledRooms);
+        RandomUtil.Shuffle(shuffledRooms);
 
         bool anyJiggled = false;
         foreach (Room x in shuffledAnchors)
@@ -392,7 +416,7 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         Room endingRoom = criticalPath[criticalPath.Count - 1];
         Vector3Int endingCell = Center(endingRoom.UnpadFloorBounds(padding, wallHeight));
         //RenderTile(endingCell, endTile);
-        InstantiatePrefab(exit, tilemap.CellToWorld(endingCell) + 0.5f * tilemap.cellSize);
+        InstantiatePrefab(exit, tilemap.CellToWorld(endingCell) + 0.5f * tilemap.cellSize, gameObject);
 
         tilemap.RefreshAllTiles();
     }
@@ -443,14 +467,14 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         return null;
     }
 
-    GameObject InstantiatePrefab(GameObject template, Vector3 pos)
+    static GameObject InstantiatePrefab(GameObject template, Vector3 pos, GameObject parent)
     {
 #if UNITY_EDITOR
         var o = (GameObject)PrefabUtility.InstantiatePrefab(template);
 #else
         var o = GameObject.Instantiate(template);
 #endif
-        o.transform.parent = transform;
+        o.transform.parent = parent.transform;
         o.transform.position = pos;
         o.SetActive(true);
         return o;
@@ -464,16 +488,14 @@ public class GraphMazeGenerator : MazeGeneratorBehavior
         {
             if (r == criticalPath[criticalPath.Count - 1] && pos == Center(r.UnpadFloorBounds(padding, wallHeight))) continue;
             if (tilemap.GetTile(pos) != floorTile) continue;
+            if (FindClutterAtCellPos(pos) != null) continue;
             options.Add(pos);
         }
-        RandomShuffle(options);
+        RandomUtil.Shuffle(options);
         int n = Random.Range(numClutterMin, numClutterMax + 1);
         for (int i = 0; i < n && i < options.Count; ++i)
         {
-            GameObject o = RandomClutter();
-            Vector3Int pos = options[i];
-            Vector3 worldPos = tilemap.CellToWorld(pos) + 0.5f * tilemap.cellSize;
-            InstantiatePrefab(o, worldPos);
+            SpawnClutterAtCellPos(options[i], RandomClutter());
         }
     }
 
